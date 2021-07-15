@@ -60,6 +60,7 @@ func NewEncryptedImage(path, format, secret string, size uint64) (Image, error) 
 	img.Format = format
 	img.Size = size
 	img.Secret = secret
+	img.Encrypted = true
 
 	if format != ImageFormatQCOW2 {
 		return img, fmt.Errorf("encrypted volumes must be of the type 'ImageFormatQCOW2'")

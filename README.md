@@ -51,13 +51,16 @@ const (
 )
 
 func main() {
-    volume := qemu.NewImage("myVolume.qcow2", qemu.ImageFormatQCOW2, 100*GiB)
-    
-    // Create the volume after applying the configuration options 
-    err := volume.Create()
-    if err != nil {
-        panic(err.Error()) // Never invoke a panic if your application 
-    }                      // runs as a daemon!
+	vol, err := qemu.NewEncryptedImage("rockyLinux.qcow2", qemu.ImageFormatQCOW2, "yourVolumeSecret", 100*GiB)
+	if err != nil {
+		panic(err.Error())
+	}
+
+	// Create the volume after applying the configuration options
+	err = vol.Create()
+	if err != nil {
+		panic(err.Error())
+	}
 
 }
 ```
@@ -66,13 +69,26 @@ func main() {
 ### Open an existing volume
 
 ```go
-img, err := qemu.OpenImage("rockylinux.qcow2")
+img, err := qemu.OpenImage("rockyLinux.qcow2")
 if err != nil {
 	panic(err.Error())
 }
 
 fmt.Println("image", img.Path, "format", img.Format, "size", img.Size)
 ```
+
+
+### Open an existing *encrypted* volume
+
+```go
+img, err := qemu.OpenEncryptedImage("rockyLinux.qcow2", "yourVolumeSecret")
+if err != nil {
+	panic(err.Error())
+}
+
+fmt.Println("image", img.Path, "format", img.Format, "size", img.Size)
+```
+
 
 ### Snapshot creation and deletion
 
@@ -90,29 +106,6 @@ if err != nil {
 for _, snapshot := range snaps {
 	fmt.Println(snapshot.Name, snapshot.Date)
 }
-```
-
-### Start a virtual machine
-
-```go
-img, err := qemu.OpenImage("debian.qcow2")
-if err != nil {
-	log.Fatal(err)
-}
-
-m := qemu.NewMachine(1, 512) // 1 CPU, 512MiB RAM
-m.AddDrive(img)
-
-// x86_64 arch (using qemu-system-x86_64), with kvm
-pid, err := m.Start("x86_64", true, func(stderr string) {
-        log.Println("QEMU stderr:", stderr)
-})
-
-if err != nil {
-	log.Fatal(err)
-}
-
-fmt.Println("QEMU started on PID", pid)
 ```
 
 ## License

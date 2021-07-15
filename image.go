@@ -80,7 +80,7 @@ func OpenImage(path string) (Image, error) {
 
 	img.Path = path
 
-	err := img.retreiveInfos()
+	img, err := img.retreiveInfos()
 	if err != nil {
 		return img, err
 	}
@@ -102,7 +102,9 @@ func OpenEncryptedImage(path, secret string) (Image, error) {
 	}
 
 	img.Path = path
-	err := img.retreiveInfos()
+	img.Encrypted = true
+
+	img, err := img.retreiveInfos()
 	if err != nil {
 		return img, err
 	}
@@ -117,7 +119,7 @@ func OpenEncryptedImage(path, secret string) (Image, error) {
 	return img, nil
 }
 
-func (i *Image) retreiveInfos() error {
+func (i *Image) retreiveInfos() (Image, error) {
 	type snapshotInfo struct {
 		ID        string `json:"id"`
 		Name      string `json:"name"`
@@ -141,17 +143,21 @@ func (i *Image) retreiveInfos() error {
 
 	out, err := cmd.CombinedOutput()
 	if err != nil {
-		return fmt.Errorf("'qemu-img info' output: %s", oneLine(out))
+		return *i, fmt.Errorf("'qemu-img info' output: %s", oneLine(out))
 	}
 
 	err = json.Unmarshal(out, &info)
 	if err != nil {
-		return fmt.Errorf("'qemu-img info' invalid json output")
+		return *i, fmt.Errorf("'qemu-img info' invalid json output")
 	}
 
 	i.Format = info.Format
 	i.Size = info.Size
-	i.Encrypted = info.Encrypted
+	if i.Secret != "" {
+		i.Encrypted = true
+	} else {
+		i.Encrypted = info.Encrypted
+	}
 
 	i.snapshots = make([]Snapshot, 0)
 	for _, snap := range info.Snapshots {
@@ -170,13 +176,13 @@ func (i *Image) retreiveInfos() error {
 		i.snapshots = append(i.snapshots, s)
 	}
 
-	return nil
+	return *i, nil
 }
 
 // Snapshots returns the snapshots contained
 // within the image
 func (i Image) Snapshots() ([]Snapshot, error) {
-	err := i.retreiveInfos()
+	_, err := i.retreiveInfos()
 	if err != nil {
 		return nil, err
 	}
@@ -193,7 +199,7 @@ func (i Image) Snapshots() ([]Snapshot, error) {
 func (i *Image) CreateSnapshot(name string) (Snapshot, error) {
 	var snap Snapshot
 	// Handles normal volumes
-	if i.Secret == "" || !i.Encrypted {
+	if i.Encrypted == false {
 		cmd := exec.Command("qemu-img", "snapshot", "-c", name, i.Path)
 
 		out, err := cmd.CombinedOutput()
@@ -253,7 +259,7 @@ func (i *Image) CreateSnapshot(name string) (Snapshot, error) {
 // specified snapshot name
 func (i Image) RestoreSnapshot(name string) error {
 	// Handles normal volumes
-	if i.Secret == "" || !i.Encrypted {
+	if i.Encrypted == false {
 		cmd := exec.Command("qemu-img", "snapshot", "-a", name, i.Path)
 
 		out, err := cmd.CombinedOutput()
@@ -277,7 +283,7 @@ func (i Image) RestoreSnapshot(name string) error {
 // DeleteSnapshot deletes the the corresponding
 // snapshot from the image
 func (i Image) DeleteSnapshot(name string) error {
-	if i.Secret == "" || !i.Encrypted {
+	if i.Encrypted == false {
 		cmd := exec.Command("qemu-img", "snapshot", "-d", name, i.Path)
 
 		out, err := cmd.CombinedOutput()
@@ -314,7 +320,7 @@ func (i *Image) SetBackingFile(backingFile string) error {
 // using the 'qemu-img create' command. If a secret is set, the volume is provisioned
 // with encryption enabled.
 func (i Image) Create() error {
-	if i.Secret == "" || !i.Encrypted {
+	if i.Encrypted == false {
 		args := []string{"create", "-f", i.Format}
 
 		if len(i.BackingFile) > 0 {

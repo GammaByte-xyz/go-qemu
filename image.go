@@ -322,7 +322,7 @@ func (i *Image) SetBackingFile(backingFile string) error {
 // with encryption enabled.
 func (i Image) Create() error {
 	if i.Encrypted == false {
-		args := []string{"create", "-f", i.Format}
+		args := []string{"create", "-f", i.Format, "-o", "preallocation=metadata"}
 
 		if len(i.BackingFile) > 0 {
 			args = append(args, "-o")
@@ -344,7 +344,7 @@ func (i Image) Create() error {
 	if i.Format != ImageFormatQCOW2 {
 		return fmt.Errorf("encrypted volumes must be qcow2 format")
 	}
-	args := []string{"create", "--object", "secret,id=sec0,data=" + i.Secret, "-f", i.Format, "-o", "encrypt.format=luks,encrypt.key-secret=sec0", "-o", "preallocation=metadata,compat=1.1,lazy_refcounts=on"}
+	args := []string{"create", "--object", "secret,id=sec0,data=" + i.Secret, "-f", i.Format, "-o", "encrypt.format=luks,encrypt.key-secret=sec0", "-o", "preallocation=metadata"}
 	if len(i.BackingFile) > 0 {
 		args = append(args, "-o")
 		args = append(args, fmt.Sprintf("backing_file=%s", i.BackingFile))

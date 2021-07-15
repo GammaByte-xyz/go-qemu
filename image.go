@@ -103,6 +103,7 @@ func OpenEncryptedImage(path, secret string) (Image, error) {
 
 	img.Path = path
 	img.Encrypted = true
+	img.Secret = secret
 
 	img, err := img.retreiveInfos()
 	if err != nil {

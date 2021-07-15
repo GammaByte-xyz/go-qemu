@@ -1,51 +1,90 @@
 # go-qemu
 
-Golang interface to the QEMU hypervisor
+Golang interface to the QEMU hypervisor (particularly volume operations), forked from quadrifoglio/go-qemu.
 
+This fork adds additional functionality such as NBD connections, volume encryption, cluster size adjustments,
+compatibility options, and other optimizations that could be potentially useful in certain scenarios.
 ## Installation
 
 ```
-go get github.com/quadrifoglio/go-qemu
+go get github.com/GammaByte-xyz/go-qemu
 ```
 
 You obviously need QEMU to use this tool.
 
 ## Usage
 
-### Create an image
+### Create a 100 GiB volume
 
 ```go
-img := qemu.NewImage("vm.qcow2", qemu.ImageFormatQCOW2, 5*GiB)
-img.SetBackingFile("debian.qcow2")
+package main
 
-err := img.Create()
-if err != nil {
-	log.Fatal(err)
+import (
+	"github.com/GammaByte-xyz/go-qemu"
+)
+const (
+    GiB = 1073741824 // 1 GiB = 2^30 bytes
+)
+
+func main() {
+    volume := qemu.NewImage("myVolume.qcow2", qemu.ImageFormatQCOW2, 100*GiB)
+    
+    // Create the volume after applying the configuration options 
+    err := volume.Create()
+    if err != nil {
+        panic(err.Error()) // Never invoke a panic if your application 
+    }                      // runs as a daemon!
+
 }
 ```
 
-### Open an existing image
+### Create a 100 GiB *encrypted* volume
 
 ```go
-img, err := qemu.OpenImage("debian.qcow2")
+package main
+
+import (
+	"github.com/GammaByte-xyz/go-qemu"
+)
+const (
+    GiB = 1073741824 // 1 GiB = 2^30 bytes
+)
+
+func main() {
+    volume := qemu.NewImage("myVolume.qcow2", qemu.ImageFormatQCOW2, 100*GiB)
+    
+    // Create the volume after applying the configuration options 
+    err := volume.Create()
+    if err != nil {
+        panic(err.Error()) // Never invoke a panic if your application 
+    }                      // runs as a daemon!
+
+}
+```
+
+
+### Open an existing volume
+
+```go
+img, err := qemu.OpenImage("rockylinux.qcow2")
 if err != nil {
-	log.Fatal(err)
+	panic(err.Error())
 }
 
 fmt.Println("image", img.Path, "format", img.Format, "size", img.Size)
 ```
 
-### Snapshots
+### Snapshot creation and deletion
 
 ```go
-err = img.CreateSnapshot("backup")
+err = img.CreateSnapshot("mySnapshot")
 if err != nil {
-	log.Fatal(err)
+	panic(err.Error())
 }
 
 snaps, err := img.Snapshots()
 if err != nil {
-	log.Fatal(err)
+	panic(err.Error())
 }
 
 for _, snapshot := range snaps {

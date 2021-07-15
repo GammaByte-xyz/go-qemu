@@ -2,49 +2,47 @@ package main
 
 import (
 	"fmt"
-	"log"
-
-	"github.com/quadrifoglio/go-qemu"
+	"github.com/GammaByte-xyz/go-qemu"
 )
 
 const (
 	GiB = 1073741824 // 1 GiB = 2^30 bytes
 )
 
-func snapshots() {
-	img, err := qemu.OpenImage("debian.qcow2")
+func EncryptedVolume() {
+	vol, err := qemu.NewEncryptedImage("rockyLinux.qcow2", qemu.ImageFormatQCOW2, "yourPrivateSecret", 100*GiB)
 	if err != nil {
-		log.Fatal(err)
+		panic(err.Error())
 	}
 
-	fmt.Println("base image", img.Path, "format", img.Format, "size", img.Size)
-
-	err = img.CreateSnapshot("backup")
+	err = vol.Create()
 	if err != nil {
-		log.Fatal(err)
+		panic(err.Error())
 	}
 
-	snaps, err := img.Snapshots()
+	snapshot, err := vol.CreateSnapshot("myTestSnapshot")
 	if err != nil {
-		log.Fatal(err)
+		panic(err.Error())
 	}
-
-	for _, snapshot := range snaps {
-		fmt.Println(snapshot.Name, snapshot.Date)
-	}
+	fmt.Printf("Created snapshot %s with ID %d at %s\n", snapshot.Name, snapshot.ID, snapshot.Date.String())
 }
 
-func create() {
-	img := qemu.NewImage("vm.qcow2", qemu.ImageFormatQCOW2, 5*GiB)
-	img.SetBackingFile("debian.qcow2")
+func StandardVolume() {
+	vol := qemu.NewImage("CentOS.qcow2", qemu.ImageFormatQCOW2, 100*GiB)
 
-	err := img.Create()
+	err := vol.Create()
 	if err != nil {
-		log.Fatal(err)
+		panic(err.Error())
 	}
+
+	snapshot, err := vol.CreateSnapshot("myTestSnapshot")
+	if err != nil {
+		panic(err.Error())
+	}
+	fmt.Printf("Created snapshot %s with ID %d at %s\n", snapshot.Name, snapshot.ID, snapshot.Date.String())
 }
 
 func main() {
-	create()
-	snapshots()
+	EncryptedVolume()
+	StandardVolume()
 }

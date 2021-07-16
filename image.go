@@ -26,23 +26,39 @@ const (
 	ImagePreallocMetadata = "metadata"
 	ImagePreallocFalloc   = "falloc"
 	ImagePreallocFull     = "full"
+
+	CipherAlgorithmAES256     = "aes-256"
+	CipherHashAlgorithmSHA256 = "sha256"
+	CipherFormatLUKS          = "luks"
+	CipherFormatAES           = "aes"
+	CipherModeXTS             = "xts"
+	IVGenAlgPlain64           = "plain64"
+	IVGenHashAlgorithmSHA256  = "sha256"
 )
 
 // Image represents a QEMU disk image
 type Image struct {
-	Path          string     // Image location (filepath)
-	Format        string     // Image format
-	Size          uint64     // Image size in bytes
-	Secret        string     // Image secret, this enabled encryption
-	BackingFile   string     // Image backing file (filepath)
-	Encrypted     bool       // Image encryption value (readonly)
-	LazyRefcounts bool       // Image lazy refcount value
-	CompatLevel   string     // Image compatibility level
-	RefcountBits  int64      // Image refcount bits
-	ClusterSizeKB int64      // Image cluster size (bytes)
-	ExtendedL2    bool       // Image L2 table extension value
-	Preallocation string     // Image preallocation type
-	snapshots     []Snapshot // Image snapshot array
+	Path                string     // Image location (filepath)
+	Format              string     // Image format
+	Size                uint64     // Image size in bytes
+	Secret              string     // Image secret, this enabled encryption
+	BackingFile         string     // Image backing file (filepath)
+	Encrypted           bool       // Image encryption value (readonly)
+	LazyRefcounts       bool       // Image lazy refcount value
+	CompatLevel         string     // Image compatibility level
+	RefcountBits        int64      // Image refcount bits
+	ClusterSizeKB       int64      // Image cluster size (bytes)
+	ExtendedL2          bool       // Image L2 table extension value
+	Preallocation       string     // Image preallocation type
+	CipherAlgorithm     string     // Image encryption cipher algorithm
+	CipherMode          string     // Image encryption cipher mode
+	CipherFormat        string     // Image encryption cipher format
+	CipherHashAlg       string     // Image encryption cipher hash algorithm
+	EncryptIterTime     int64      // Image encryption PBKDF iteration time (ms)
+	EncryptIvGenAlg     string     // Image encryption IV generation algorithm
+	EncryptIvGenHashAlg string     // Image encryption IV generation hash algorithm
+	EncryptKeySecret    string     // Image encryption key secret
+	snapshots           []Snapshot // Image snapshot array
 }
 
 // Snapshot represents a QEMU image snapshot
@@ -282,8 +298,18 @@ func (i Image) OptimizeSpeed() Image {
 	i.RefcountBits = 64
 	i.ClusterSizeKB = 1024
 	i.ExtendedL2 = true
-	i.Preallocation = "falloc"
+	i.Preallocation = "full"
 
+	switch {
+	case i.Encrypted:
+		i.CipherAlgorithm = CipherAlgorithmAES256
+		i.CipherHashAlg = CipherHashAlgorithmSHA256
+		i.CipherFormat = CipherFormatLUKS
+		i.CipherMode = CipherModeXTS
+		i.EncryptIvGenAlg = IVGenAlgPlain64
+		i.EncryptIterTime = 1000
+		i.EncryptIvGenHashAlg = IVGenHashAlgorithmSHA256
+	}
 	return i
 }
 
@@ -295,6 +321,16 @@ func (i Image) OptimizeSize() Image {
 	i.ExtendedL2 = true
 	i.Preallocation = "metadata"
 
+	switch {
+	case i.Encrypted:
+		i.CipherAlgorithm = CipherAlgorithmAES256
+		i.CipherHashAlg = CipherHashAlgorithmSHA256
+		i.CipherFormat = CipherFormatLUKS
+		i.CipherMode = CipherModeXTS
+		i.EncryptIvGenAlg = IVGenAlgPlain64
+		i.EncryptIterTime = 2000
+		i.EncryptIvGenHashAlg = IVGenHashAlgorithmSHA256
+	}
 	return i
 }
 
@@ -413,7 +449,7 @@ func (i Image) Create() error {
 	if i.Format != ImageFormatQCOW2 {
 		return fmt.Errorf("encrypted volumes must be qcow2 format")
 	}
-	args := []string{"create", "--object", "secret,id=sec0,data=" + i.Secret, "-f", i.Format, "-o", "encrypt.format=luks,encrypt.key-secret=sec0"}
+	args := []string{"create", "--object", "secret,id=sec0,data=" + i.Secret, "-f", i.Format, "-o", "encrypt.key-secret=sec0"}
 	if len(i.BackingFile) > 0 {
 		args = append(args, "-o")
 		args = append(args, fmt.Sprintf("backing_file=%s", i.BackingFile))
@@ -445,6 +481,31 @@ func (i Image) Create() error {
 		args = append(args, "-o")
 		args = append(args, fmt.Sprintf("refcount_bits=%d", i.RefcountBits))
 	}
+
+	if i.EncryptIterTime != 0 {
+		args = append(args, "-o", fmt.Sprintf("encrypt.iter-time=%d", i.EncryptIterTime))
+	}
+	if len(i.EncryptIvGenHashAlg) > 0 {
+		args = append(args, "-o", fmt.Sprintf("encrypt.ivgen-hash-alg=%s", i.EncryptIvGenHashAlg))
+	}
+	if len(i.EncryptIvGenAlg) > 0 {
+		args = append(args, "-o", fmt.Sprintf("encrypt.ivgen-alg=%s", i.EncryptIvGenAlg))
+	}
+	if len(i.CipherMode) > 0 {
+		args = append(args, "-o", fmt.Sprintf("encrypt.cipher-mode=%s", i.CipherMode))
+	}
+	if len(i.CipherAlgorithm) > 0 {
+		args = append(args, "-o", fmt.Sprintf("encrypt.cipher-alg=%s", i.CipherAlgorithm))
+	}
+	if len(i.CipherHashAlg) > 0 {
+		args = append(args, "-o", fmt.Sprintf("encrypt.hash-alg=%s", i.CipherHashAlg))
+	}
+	if len(i.CipherFormat) > 0 {
+		args = append(args, "-o", fmt.Sprintf("encrypt.format=%s", i.CipherFormat))
+	} else {
+		args = append(args, "-o", "encrypt.format=luks")
+	}
+
 	args = append(args, i.Path)
 	args = append(args, strconv.FormatUint(i.Size, 10))
 

@@ -19,17 +19,30 @@ const (
 	ImageFormatVDI   = "vdi"
 	ImageFormatVHDX  = "vhdx"
 	ImageFormatVPC   = "vpc"
+
+	CompatLevelQCOW3 = "1.1"
+	CompatLevelQCOW2 = "0.10"
+
+	ImagePreallocMetadata = "metadata"
+	ImagePreallocFalloc   = "falloc"
+	ImagePreallocFull     = "full"
 )
 
 // Image represents a QEMU disk image
 type Image struct {
-	Path        string     // Image location (filepath)
-	Format      string     // Image format
-	Size        uint64     // Image size in bytes
-	Secret      string     // Image secret, this enabled encryption
-	BackingFile string     // Image backing file (filepath)
-	Encrypted   bool       // Image encryption value (readonly)
-	snapshots   []Snapshot // Image snapshot array
+	Path          string     // Image location (filepath)
+	Format        string     // Image format
+	Size          uint64     // Image size in bytes
+	Secret        string     // Image secret, this enabled encryption
+	BackingFile   string     // Image backing file (filepath)
+	Encrypted     bool       // Image encryption value (readonly)
+	LazyRefcounts bool       // Image lazy refcount value
+	CompatLevel   string     // Image compatibility level
+	RefcountBits  int64      // Image refcount bits
+	ClusterSize   int64      // Image cluster size (bytes)
+	ExtendedL2    bool       // Image L2 table extension value
+	Preallocation string     // Image preallocation type
+	snapshots     []Snapshot // Image snapshot array
 }
 
 // Snapshot represents a QEMU image snapshot
@@ -49,6 +62,9 @@ func NewImage(path, format string, size uint64) Image {
 	img.Path = path
 	img.Format = format
 	img.Size = size
+	img.ClusterSize = 65536
+	img.RefcountBits = 16
+
 	return img
 }
 
@@ -61,6 +77,8 @@ func NewEncryptedImage(path, format, secret string, size uint64) (Image, error) 
 	img.Size = size
 	img.Secret = secret
 	img.Encrypted = true
+	img.ClusterSize = 65536
+	img.RefcountBits = 16
 
 	if format != ImageFormatQCOW2 {
 		return img, fmt.Errorf("encrypted volumes must be of the type 'ImageFormatQCOW2'")
@@ -328,6 +346,30 @@ func (i Image) Create() error {
 			args = append(args, "-o")
 			args = append(args, fmt.Sprintf("backing_file=%s", i.BackingFile))
 		}
+		if len(i.CompatLevel) > 0 {
+			args = append(args, "-o")
+			args = append(args, fmt.Sprintf("compat=%s", i.CompatLevel))
+		}
+		if i.ClusterSize != 65536 {
+			args = append(args, "-o")
+			args = append(args, fmt.Sprintf("clustersize=%d", i.ClusterSize))
+		}
+		if i.ExtendedL2 {
+			args = append(args, "-o")
+			args = append(args, "extended_l2=on")
+		}
+		if i.LazyRefcounts {
+			args = append(args, "-o")
+			args = append(args, "lazy_refcounts=on")
+		}
+		if len(i.Preallocation) > 0 {
+			args = append(args, "-o")
+			args = append(args, fmt.Sprintf("preallocation=%s", i.Preallocation))
+		}
+		if i.RefcountBits != 16 {
+			args = append(args, "-o")
+			args = append(args, fmt.Sprintf("refcount_bits=%d", i.RefcountBits))
+		}
 
 		args = append(args, i.Path)
 		args = append(args, strconv.FormatUint(i.Size, 10))
@@ -348,6 +390,30 @@ func (i Image) Create() error {
 	if len(i.BackingFile) > 0 {
 		args = append(args, "-o")
 		args = append(args, fmt.Sprintf("backing_file=%s", i.BackingFile))
+	}
+	if len(i.CompatLevel) > 0 {
+		args = append(args, "-o")
+		args = append(args, fmt.Sprintf("compat=%s", i.CompatLevel))
+	}
+	if i.ClusterSize != 65536 {
+		args = append(args, "-o")
+		args = append(args, fmt.Sprintf("clustersize=%d", i.ClusterSize))
+	}
+	if i.ExtendedL2 {
+		args = append(args, "-o")
+		args = append(args, "extended_l2=on")
+	}
+	if i.LazyRefcounts {
+		args = append(args, "-o")
+		args = append(args, "lazy_refcounts=on")
+	}
+	if len(i.Preallocation) > 0 {
+		args = append(args, "-o")
+		args = append(args, fmt.Sprintf("preallocation=%s", i.Preallocation))
+	}
+	if i.RefcountBits != 16 {
+		args = append(args, "-o")
+		args = append(args, fmt.Sprintf("refcount_bits=%d", i.RefcountBits))
 	}
 	args = append(args, i.Path)
 	args = append(args, strconv.FormatUint(i.Size, 10))

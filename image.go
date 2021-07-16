@@ -352,7 +352,7 @@ func (i Image) Create() error {
 		}
 		if i.ClusterSize != 65536 {
 			args = append(args, "-o")
-			args = append(args, fmt.Sprintf("clustersize=%d", i.ClusterSize))
+			args = append(args, fmt.Sprintf("cluster_size=%d", i.ClusterSize))
 		}
 		if i.ExtendedL2 {
 			args = append(args, "-o")

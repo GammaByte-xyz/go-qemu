@@ -41,7 +41,7 @@ type Image struct {
 	Path                string     // Image location (filepath)
 	Format              string     // Image format
 	Size                uint64     // Image size in bytes
-	Secret              string     // Image secret, this enabled encryption
+	Secret              string     // Image secret, this enables encryption
 	BackingFile         string     // Image backing file (filepath)
 	Encrypted           bool       // Image encryption value (readonly)
 	LazyRefcounts       bool       // Image lazy refcount value
@@ -57,7 +57,6 @@ type Image struct {
 	EncryptIterTime     int64      // Image encryption PBKDF iteration time (ms)
 	EncryptIvGenAlg     string     // Image encryption IV generation algorithm
 	EncryptIvGenHashAlg string     // Image encryption IV generation hash algorithm
-	EncryptKeySecret    string     // Image encryption key secret
 	snapshots           []Snapshot // Image snapshot array
 }
 

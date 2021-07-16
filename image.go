@@ -39,7 +39,7 @@ type Image struct {
 	LazyRefcounts bool       // Image lazy refcount value
 	CompatLevel   string     // Image compatibility level
 	RefcountBits  int64      // Image refcount bits
-	ClusterSize   int64      // Image cluster size (bytes)
+	ClusterSizeKB int64      // Image cluster size (bytes)
 	ExtendedL2    bool       // Image L2 table extension value
 	Preallocation string     // Image preallocation type
 	snapshots     []Snapshot // Image snapshot array
@@ -62,7 +62,7 @@ func NewImage(path, format string, size uint64) Image {
 	img.Path = path
 	img.Format = format
 	img.Size = size
-	img.ClusterSize = 65536
+	img.ClusterSizeKB = 64
 	img.RefcountBits = 16
 
 	return img
@@ -77,7 +77,7 @@ func NewEncryptedImage(path, format, secret string, size uint64) (Image, error) 
 	img.Size = size
 	img.Secret = secret
 	img.Encrypted = true
-	img.ClusterSize = 65536
+	img.ClusterSizeKB = 64
 	img.RefcountBits = 16
 
 	if format != ImageFormatQCOW2 {
@@ -350,9 +350,9 @@ func (i Image) Create() error {
 			args = append(args, "-o")
 			args = append(args, fmt.Sprintf("compat=%s", i.CompatLevel))
 		}
-		if i.ClusterSize != 65536 {
+		if i.ClusterSizeKB != 64 {
 			args = append(args, "-o")
-			args = append(args, fmt.Sprintf("cluster_size=%d", i.ClusterSize))
+			args = append(args, fmt.Sprintf("cluster_size=%dK", i.ClusterSizeKB))
 		}
 		if i.ExtendedL2 {
 			args = append(args, "-o")
@@ -398,9 +398,9 @@ func (i Image) Create() error {
 		args = append(args, "-o")
 		args = append(args, fmt.Sprintf("compat=%s", i.CompatLevel))
 	}
-	if i.ClusterSize != 65536 {
+	if i.ClusterSizeKB != 64 {
 		args = append(args, "-o")
-		args = append(args, fmt.Sprintf("cluster_size=%d", i.ClusterSize))
+		args = append(args, fmt.Sprintf("cluster_size=%dK", i.ClusterSizeKB))
 	}
 	if i.ExtendedL2 {
 		args = append(args, "-o")

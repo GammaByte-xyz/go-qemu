@@ -280,7 +280,7 @@ func (i Image) OptimizeSpeed() Image {
 	i.LazyRefcounts = true
 	i.CompatLevel = CompatLevelQCOW3
 	i.RefcountBits = 64
-	i.ClusterSizeKB = 4096
+	i.ClusterSizeKB = 1024
 	i.ExtendedL2 = true
 	i.Preallocation = "falloc"
 

@@ -274,6 +274,30 @@ func (i *Image) CreateSnapshot(name string) (Snapshot, error) {
 	}
 }
 
+// OptimizeSpeed Optimizes the way QEMU handles caching of data while writing to a volume.
+// OptimizeSpeed DOES NOT WORK ON EXISTING VOLUMES
+func (i Image) OptimizeSpeed() Image {
+	i.LazyRefcounts = true
+	i.CompatLevel = CompatLevelQCOW3
+	i.RefcountBits = 64
+	i.ClusterSizeKB = 4096
+	i.ExtendedL2 = true
+	i.Preallocation = "falloc"
+
+	return i
+}
+
+// OptimizeSize Optimizes the way QEMU handles the allocation of data to a volume.
+// OptimizeSize DOES NOT WORK ON EXISTING VOLUMES
+func (i Image) OptimizeSize() Image {
+	i.RefcountBits = 16
+	i.ClusterSizeKB = 64
+	i.ExtendedL2 = true
+	i.Preallocation = "metadata"
+
+	return i
+}
+
 // RestoreSnapshot restores the the image to the
 // specified snapshot name
 func (i Image) RestoreSnapshot(name string) error {
